@@ -1,35 +1,36 @@
 #!/usr/bin/env bash
-# Displays informtation about subdomains.
+# A bash script that displays information about domains
 
-# uncomment for debugging purposes.
-#set -x
+# Function to display information about a subdomain
+get_subdomain_info() {
+    local domain="$1"
+    local subdomain="$2"
 
-# for the checker to work please remove the colors.
+    # Query DNS records for the specified subdomain
+    local dns_info
+    dns_info=$(dig "$subdomain.$domain" | awk '/ANSWER SECTION/ {getline; print}')
 
-# colors
-blue='\e[1;34m'
-brown='\e[0;33m'
-reset='\033[0m'
+    # Parse the DNS information and extract relevant details
+    local record_type
+    record_type=$(echo "$dns_info" | awk '{print $4}')
+    local destination
+    destination=$(echo "$dns_info" | awk '{print $5}')
 
-# variables & parameters
-subdomains=( "www" "lb-01" "web-01" "web-02" )
-domain="$1"
-sub="$2"
-
-dig_cmd () {
-	# func variables
-	sub="$2"
-	INFO="$(dig "$sub.$domain" | grep -A1 'ANSWER SECTION:' | awk 'NR==2')"
-	IP=$(echo "$INFO" | awk '{print $5}')
-	RECORD=$(echo "$INFO" | awk '{print $4}')
-
-	echo -e "${brown}The subdomain ${blue}$sub${brown} is a ${blue}$RECORD${brown} record and points to ${blue}$IP${reset}"
+    # Print the information in the required format
+    echo "The subdomain $subdomain is a $record_type record and points to $destination"
 }
 
-if [ $# -eq 1 ]; then
-	for subs in "${subdomains[@]}"; do
-		dig_cmd "$domain" "$subs"
-	done
-elif [ $# -eq 2 ]; then
-	dig_cmd "$domain" "$sub"
+# Main script starts here
+domain="$1"
+subdomain="$2"
+
+# If subdomain is not specified, display information for default subdomains
+if [ -z "$subdomain" ]; then
+    get_subdomain_info "$domain" "www"
+    get_subdomain_info "$domain" "lb-01"
+    get_subdomain_info "$domain" "web-01"
+    get_subdomain_info "$domain" "web-02"
+else
+    # Display information for the specified subdomain
+    get_subdomain_info "$domain" "$subdomain"
 fi
