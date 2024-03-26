@@ -1,30 +1,66 @@
 #!/usr/bin/python3
-"""Python script that exports data to a JSON file"""
+"""
+This script fetches response from an API and exports data in CSV format
+"""
 import json
 import requests
 import sys
 
 
+def export_todos_to_json(employee_id):
+    """
+    Returns info about an employee's TODO list progress
+    """
+    id_endpoint = f"https://jsonplaceholder.typicode.com/users/{employee_id}"
+    todos_endpoint = f"{id_endpoint}/todos"
+
+    try:
+        # Get user's data
+        response = requests.get(id_endpoint, timeout=10)
+        user_data = response.json()
+        username = user_data.get('username')
+
+        # Get tasks data
+        response = requests.get(todos_endpoint, timeout=10)
+        todos = response.json()
+
+        # Create a dictionary to store data
+        todos_dict = {
+            employee_id: []
+        }
+
+        # Populate the dictionary
+        for todo in todos:
+            task_completed_status = todo.get('completed')
+            task_title = todo.get('title')
+            todos_dict[employee_id].append({
+                "task": task_title,
+                "completed": task_completed_status,
+                "username": username
+            })
+
+        # Export data to JSON file
+        json_filename = employee_id + ".json"
+        with open(json_filename, 'w', encoding='utf-8') as json_file:
+            json.dump(todos_dict, json_file)
+
+        print("Data has been exported to " + json_filename)
+
+    except json.JSONDecodeError as err:
+        print(f"Error decoding JSON: {err}")
+    except Exception:
+        print("Something went wrong.")
+
+
 if __name__ == "__main__":
-    url = 'https://jsonplaceholder.typicode.com/'
+    if len(sys.argv) != 2:
+        print("Usage: python script.py <employee_id>")
+        sys.exit(1)
 
-    userid = sys.argv[1]
-    user = '{}users/{}'.format(url, userid)
-    res = requests.get(user)
-    json_o = res.json()
-    name = json_o.get('username')
+    # check if input is an integer
+    ID = sys.argv[1]
+    if not ID.isdigit():
+        print("Usage: python script.py <employee_id>")
+        sys.exit(1)
 
-    todos = '{}todos?userId={}'.format(url, userid)
-    res = requests.get(todos)
-    tasks = res.json()
-    l_task = []
-    for task in tasks:
-        dict_task = {"task": task.get('title'),
-                     "completed": task.get('completed'),
-                     "username": name}
-        l_task.append(dict_task)
-
-    d_task = {str(userid): l_task}
-    filename = '{}.json'.format(userid)
-    with open(filename, mode='w') as f:
-        json.dump(d_task, f)
+    export_todos_to_json(ID)

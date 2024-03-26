@@ -1,34 +1,45 @@
 #!/usr/bin/python3
-"""Python script that exports data in CSV format"""
+""" Rest API script that gathers data from an API and saves it to a CSV. """
 import csv
-import requests
+import json
 import sys
+import urllib
+import urllib.request
 
+# The base API url for getting the employee object
+USER_API_URL = "https://jsonplaceholder.typicode.com/users/"
 
-if __name__ == "__main__":
-    url = 'https://jsonplaceholder.typicode.com/'
+# The base API url for getting all todo objects for an employee
+TODO_API_URL = "https://jsonplaceholder.typicode.com/todos?userId="
 
-    userid = sys.argv[1]
-    user = '{}users/{}'.format(url, userid)
-    res = requests.get(user)
-    json_o = res.json()
-    name = json_o.get('username')
+# Employee ID passed as an argument to the script
+emp_id: str = sys.argv[1] if len(sys.argv) > 1 else ""
 
-    todos = '{}todos?userId={}'.format(url, userid)
-    res = requests.get(todos)
-    tasks = res.json()
-    l_task = []
-    for task in tasks:
-        l_task.append([userid,
-                       name,
-                       task.get('completed'),
-                       task.get('title')])
+# Get all the todos for a given employee ID
+if emp_id.isdigit():
+    try:
+        user_url = f"{USER_API_URL}{emp_id}"
+        todos_url = f"{TODO_API_URL}{emp_id}"
 
-    filename = '{}.csv'.format(userid)
-    with open(filename, mode='w') as employee_file:
-        employee_writer = csv.writer(employee_file,
-                                     delimiter=',',
-                                     quotechar='"',
-                                     quoting=csv.QUOTE_ALL)
-        for task in l_task:
-            employee_writer.writerow(task)
+        emp_response = urllib.request.urlopen(user_url)
+        todos_response = urllib.request.urlopen(todos_url)
+
+        emp_data = emp_response.read()
+        todos_data = todos_response.read()
+
+        employee = json.loads(emp_data)
+        todos = json.loads(todos_data)
+
+        username = employee.get("username")
+
+        with open(f"{emp_id}.csv", "w", newline="") as csvfile:
+            writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+            for todo in todos:
+                todo_status = todo.get("completed")
+                todo_title = todo.get("title")
+                writer.writerow([emp_id, username, todo_status, todo_title])
+
+    except urllib.error.URLError as err:
+        print(f"An error occurred: {err}")
+    except json.JSONDecodeError as err:
+        print(f"Error decoding JSON: {err}")
