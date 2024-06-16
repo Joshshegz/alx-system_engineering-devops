@@ -1,18 +1,6 @@
-# Puppet manifest to optimize Nginx configuration for handling load
+# fix nginx to accept and serve more requests
 
-class nginx_config {
-    file { '/etc/nginx/nginx.conf':
-        ensure  => file,
-        owner   => 'root',
-        group   => 'root',
-        mode    => '0644',
-        content => template('nginx/nginx.conf.erb'),
-        notify  => Service['nginx'],
-    }
-}
-
-service { 'nginx':
-    ensure  => running,
-    enable  => true,
-    require => Class['nginx_config'],
+exec {'modify max open files limit setting':
+  command => 'sed -i "s/15/4096/" /etc/default/nginx && sudo service nginx restart',
+  path    => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games',
 }
